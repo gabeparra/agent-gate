@@ -1,4 +1,4 @@
-"""Suite execution engine connecting providers, scorers, and metrics."""
+"""Suite execution engine connecting providers, sandbox guardrails, scorers, and metrics."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from agent_gate.guardrails import ActionHonestyScorer, MCPContractScorer, WorkspaceSandbox
 from agent_gate.metrics import estimate_cost_usd, load_pricing_table, summarize_cases
 from agent_gate.models import CaseResult, EvalCase, EvalSuite, RunResult, ScoreResult
 from agent_gate.providers.base import Provider
@@ -24,7 +25,7 @@ from agent_gate.scorers import (
 
 
 def build_default_scorers(judge_provider: Provider | None = None) -> dict[str, Scorer]:
-    """Instantiate the built-in registry of deterministic and LLM-judge scorers."""
+    """Instantiate the built-in registry of deterministic, guardrail, and LLM-judge scorers."""
     judge = judge_provider or MockProvider(model="mock-judge", profile="baseline")
     scorers: list[Scorer] = [
         CitationGroundingScorer(),
@@ -33,6 +34,8 @@ def build_default_scorers(judge_provider: Provider | None = None) -> dict[str, S
         NumericSpecificityScorer(),
         PromptInjectionScorer(),
         LLMJudgeScorer(judge),
+        MCPContractScorer(),
+        ActionHonestyScorer(),
     ]
     return {s.name: s for s in scorers}
 
@@ -86,8 +89,18 @@ def _evaluate_case(
     pricing_table: dict[str, tuple[float, float]],
 ) -> CaseResult:
     response = provider.complete(case)
-    score_results: list[ScoreResult] = []
 
+    uses_sandbox = bool(
+        case.sandbox_files
+        or case.tools
+        or "action_honesty" in case.checks
+        or "mcp_contract" in case.checks
+    )
+    sandbox_report = (
+        WorkspaceSandbox.from_case(case).replay(response.tool_calls) if uses_sandbox else None
+    )
+
+    score_results: list[ScoreResult] = []
     for check_name, check_config in case.checks.items():
         if check_config is False or check_config is None:
             continue
@@ -95,7 +108,12 @@ def _evaluate_case(
         scorer = scorers.get(check_name)
         if scorer is None:
             raise ValueError(f"Unknown scorer '{check_name}' referenced in case '{case.case_id}'")
-        score_results.append(scorer.score(case, response, cfg))
+        if isinstance(scorer, ActionHonestyScorer):
+            score_results.append(
+                scorer.score(case, response, cfg, sandbox_report=sandbox_report)
+            )
+        else:
+            score_results.append(scorer.score(case, response, cfg))
 
     if score_results:
         mean_score = round(sum(s.score for s in score_results) / len(score_results), 4)
@@ -108,6 +126,13 @@ def _evaluate_case(
         critical_passed = True
 
     cost_usd = estimate_cost_usd(response.model, response.usage, pricing_table)
+    recorded_calls = (
+        list(sandbox_report.executed_calls)
+        if sandbox_report is not None
+        else list(response.tool_calls)
+    )
+    final_disk = dict(sandbox_report.final_files) if sandbox_report is not None else {}
+
     return CaseResult(
         case_id=case.case_id,
         category=case.category,
@@ -121,7 +146,8 @@ def _evaluate_case(
         usage=response.usage,
         cost_usd=cost_usd,
         scores=score_results,
-        tool_calls=list(response.tool_calls),
+        tool_calls=recorded_calls,
+        sandbox_state=final_disk,
     )
 
 
