@@ -11,7 +11,13 @@ from agent_gate.loader import SuiteLoadError, load_suite
 from agent_gate.models import RunResult
 from agent_gate.providers.base import ProviderError
 from agent_gate.providers.registry import SUPPORTED_PROVIDERS, create_provider
-from agent_gate.runner import run_suite, save_run_result
+from agent_gate.report import (
+    ComparisonReport,
+    compare_runs,
+    save_comparison_html,
+    save_comparison_json,
+)
+from agent_gate.runner import load_run_result, run_suite, save_run_result
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -73,6 +79,26 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Exit non-zero if any evaluation case fails.",
     )
+
+    cmp_cmd = subparsers.add_parser(
+        "compare",
+        help="Compare two or more saved RunResult JSON files and generate HTML/JSON reports.",
+    )
+    cmp_cmd.add_argument(
+        "runs",
+        nargs="+",
+        help="Two or more RunResult JSON paths (first is baseline, rest are candidates).",
+    )
+    cmp_cmd.add_argument(
+        "--html-out",
+        default=None,
+        help="Path to write the self-contained static HTML comparison report.",
+    )
+    cmp_cmd.add_argument(
+        "--json-out",
+        default=None,
+        help="Path to write the machine-readable JSON comparison diff.",
+    )
     return parser
 
 
@@ -92,11 +118,28 @@ def _print_run_summary(result: RunResult) -> None:
     print("")
     for case in result.cases:
         badge = "PASS" if case.passed else "FAIL"
-        print(f"  [{badge}] {case.case_id} ({case.category}) score={case.score:.2f} {case.latency_ms:.0f}ms")
+        print(
+            f"  [{badge}] {case.case_id} ({case.category}) score={case.score:.2f} {case.latency_ms:.0f}ms"
+        )
         for sc in case.scores:
             if not sc.passed:
                 crit = " [CRITICAL]" if sc.critical else ""
                 print(f"         - {sc.name}{crit}: {sc.reason}")
+
+
+def _print_comparison_summary(report: ComparisonReport) -> None:
+    print(f"Comparison: {report.suite_name} ({len(report.cases)} cases)")
+    print(
+        f"{'Model':<28} {'Pass':>8} {'Score':>8} {'Safety':>8} {'p95 ms':>8} {'$/1k':>9} {'Regr':>6}"
+    )
+    print("-" * 81)
+    for m in report.models:
+        role = "*" if m.is_baseline else " "
+        print(
+            f"{role}{m.label:<27} {m.pass_rate * 100:>7.1f}% {m.mean_score:>8.3f} "
+            f"{m.critical_pass_rate * 100:>7.1f}% {m.p95_latency_ms:>8.1f} "
+            f"${m.cost_per_1k_runs_usd:>8.4f} {m.regressions:>6d}"
+        )
 
 
 def _handle_run(args: argparse.Namespace) -> int:
@@ -131,15 +174,33 @@ def _handle_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_compare(args: argparse.Namespace) -> int:
+    if len(args.runs) < 2:
+        raise ValueError("Provide at least two run JSON files to compare.")
+    loaded = [load_run_result(p) for p in args.runs]
+    report = compare_runs(loaded)
+    _print_comparison_summary(report)
+
+    if args.html_out:
+        html_path = save_comparison_html(report, Path(args.html_out))
+        print(f"\nSaved HTML report: {html_path}")
+    if args.json_out:
+        json_path = save_comparison_json(report, Path(args.json_out))
+        print(f"Saved JSON diff:   {json_path}")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
         if args.command == "run":
             return _handle_run(args)
+        if args.command == "compare":
+            return _handle_compare(args)
         parser.error(f"Unknown command: {args.command}")
         return 2
-    except (SuiteLoadError, ProviderError, ValueError) as exc:
+    except (SuiteLoadError, ProviderError, ValueError, FileNotFoundError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
 
