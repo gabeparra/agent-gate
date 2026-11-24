@@ -308,10 +308,20 @@ def _render_model_card(m: ModelComparison) -> str:
             else '<span class="tag tag-pass">0 regressions</span>'
         )
     )
-    pass_delta = "" if m.is_baseline else _fmt_delta(m.pass_rate_delta * 100.0, suffix="%", precision=1)
+    pass_delta = (
+        "" if m.is_baseline else _fmt_delta(m.pass_rate_delta * 100.0, suffix="%", precision=1)
+    )
     score_delta = "" if m.is_baseline else _fmt_delta(m.mean_score_delta, precision=3)
-    lat_delta = "" if m.is_baseline else _fmt_delta(m.p95_latency_delta_ms, invert=True, suffix="ms", precision=0)
-    cost_delta = "" if m.is_baseline else _fmt_delta(m.cost_per_1k_delta_usd, invert=True, suffix="", precision=4)
+    lat_delta = (
+        ""
+        if m.is_baseline
+        else _fmt_delta(m.p95_latency_delta_ms, invert=True, suffix="ms", precision=0)
+    )
+    cost_delta = (
+        ""
+        if m.is_baseline
+        else _fmt_delta(m.cost_per_1k_delta_usd, invert=True, suffix="", precision=4)
+    )
 
     safety_cls = "tag-pass" if m.critical_pass_rate >= 1.0 else "tag-fail"
     return f"""
@@ -360,7 +370,11 @@ def _render_scorer_matrix(report: ComparisonReport) -> str:
                 cells.append('<td class="subtitle">n/a</td>')
                 continue
             rate = float(stats["pass_rate"]) * 100.0
-            color = "var(--pass)" if rate >= 99.9 else ("var(--warn)" if rate >= 70.0 else "var(--fail)")
+            color = (
+                "var(--pass)"
+                if rate >= 99.9
+                else ("var(--warn)" if rate >= 70.0 else "var(--fail)")
+            )
             cells.append(
                 f"<td>"
                 f"<div><strong>{rate:.0f}%</strong> ({int(stats['passed'])}/{int(stats['total'])})</div>"
@@ -412,7 +426,11 @@ def _render_case_cell(cell: dict[str, Any]) -> str:
         return '<td class="subtitle">missing</td>'
 
     passed = bool(cell["passed"])
-    badge = '<span class="tag tag-pass">PASS</span>' if passed else '<span class="tag tag-fail">FAIL</span>'
+    badge = (
+        '<span class="tag tag-pass">PASS</span>'
+        if passed
+        else '<span class="tag tag-fail">FAIL</span>'
+    )
     score_val = float(cell["score"])
     lat = float(cell["latency_ms"])
 
@@ -423,8 +441,8 @@ def _render_case_cell(cell: dict[str, Any]) -> str:
         crit_str = " [CRIT]" if sc.get("critical") else ""
         scorer_items.append(
             f'<li><span class="tag {sc_cls}">{icon}</span> '
-            f'<code>{html.escape(sc["name"])}{crit_str}</code>: '
-            f'{html.escape(str(sc["reason"]))}</li>'
+            f"<code>{html.escape(sc['name'])}{crit_str}</code>: "
+            f"{html.escape(str(sc['reason']))}</li>"
         )
 
     tool_pills = []

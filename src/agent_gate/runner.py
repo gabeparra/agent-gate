@@ -109,9 +109,7 @@ def _evaluate_case(
         if scorer is None:
             raise ValueError(f"Unknown scorer '{check_name}' referenced in case '{case.case_id}'")
         if isinstance(scorer, ActionHonestyScorer):
-            score_results.append(
-                scorer.score(case, response, cfg, sandbox_report=sandbox_report)
-            )
+            score_results.append(scorer.score(case, response, cfg, sandbox_report=sandbox_report))
         else:
             score_results.append(scorer.score(case, response, cfg))
 

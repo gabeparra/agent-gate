@@ -61,7 +61,9 @@ class LLMJudgeScorer(Scorer):
 
         raw_score = float(parsed.get("score", 0.0))
         clamped_score = max(0.0, min(1.0, round(raw_score, 4)))
-        passed = bool(parsed.get("passed", clamped_score >= threshold)) and clamped_score >= threshold
+        passed = (
+            bool(parsed.get("passed", clamped_score >= threshold)) and clamped_score >= threshold
+        )
         reason = str(parsed.get("reason", "Judge completed evaluation."))
         return ScoreResult(
             name=self.name,

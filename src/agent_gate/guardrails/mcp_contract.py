@@ -81,7 +81,9 @@ def evaluate_tool_call(
     # 1. JSON Schema contract validation.
     if spec.input_schema:
         validator = Draft202012Validator(spec.input_schema)
-        schema_errors = sorted(validator.iter_errors(tool_call.arguments), key=lambda e: list(e.path))
+        schema_errors = sorted(
+            validator.iter_errors(tool_call.arguments), key=lambda e: list(e.path)
+        )
         for err in schema_errors[:4]:
             loc = ".".join(str(p) for p in err.path) or "$"
             violations.append(f"Schema error in '{name}' ({loc}): {err.message}")

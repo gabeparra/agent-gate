@@ -82,7 +82,9 @@ def _unique_labels(runs: list[RunResult]) -> list[str]:
 def compare_runs(runs: list[RunResult]) -> ComparisonReport:
     """Compare a baseline run (runs[0]) against one or more candidate runs."""
     if len(runs) < 2:
-        raise ValueError("compare_runs requires at least 2 RunResult objects (baseline + candidate).")
+        raise ValueError(
+            "compare_runs requires at least 2 RunResult objects (baseline + candidate)."
+        )
 
     baseline = runs[0]
     labels = _unique_labels(runs)
@@ -177,7 +179,9 @@ def compare_runs(runs: list[RunResult]) -> ComparisonReport:
             row_status = "regressed"
         elif "improved" in statuses:
             row_status = "improved"
-        elif all(s == "unchanged_pass" for s in statuses) and (base_case is None or base_case.passed):
+        elif all(s == "unchanged_pass" for s in statuses) and (
+            base_case is None or base_case.passed
+        ):
             row_status = "unchanged_pass"
         elif all(s == "unchanged_fail" for s in statuses):
             row_status = "unchanged_fail"

@@ -46,7 +46,16 @@ def create_provider(
             temperature=temperature,
             timeout_seconds=timeout_seconds,
         )
-    if normalized in {"openai", "azure", "azure-foundry", "openrouter", "ollama", "llamacpp", "llama.cpp", "local"}:
+    if normalized in {
+        "openai",
+        "azure",
+        "azure-foundry",
+        "openrouter",
+        "ollama",
+        "llamacpp",
+        "llama.cpp",
+        "local",
+    }:
         return OpenAICompatibleProvider.from_preset(
             normalized,
             model=model,

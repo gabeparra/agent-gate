@@ -119,9 +119,7 @@ class OpenAICompatibleProvider(Provider):
         text = message.get("content") or ""
         if isinstance(text, list):
             # Some OpenAI-compatible servers return structured text parts.
-            text = "".join(
-                str(part.get("text", "")) for part in text if isinstance(part, dict)
-            )
+            text = "".join(str(part.get("text", "")) for part in text if isinstance(part, dict))
 
         tool_calls: list[ToolCall] = []
         for raw_tc in message.get("tool_calls") or []:
@@ -185,7 +183,9 @@ class OpenAICompatibleProvider(Provider):
 
         if normalized in {"azure", "azure-foundry"}:
             key = os.getenv("AZURE_AI_API_KEY") or os.getenv("AZURE_OPENAI_API_KEY")
-            endpoint = base_url or os.getenv("AZURE_AI_ENDPOINT") or os.getenv("AZURE_OPENAI_ENDPOINT")
+            endpoint = (
+                base_url or os.getenv("AZURE_AI_ENDPOINT") or os.getenv("AZURE_OPENAI_ENDPOINT")
+            )
             if not key or not endpoint:
                 raise ProviderError(
                     "Azure AI Foundry requires AZURE_AI_API_KEY and AZURE_AI_ENDPOINT (or --base-url)."
@@ -208,7 +208,9 @@ class OpenAICompatibleProvider(Provider):
             if not key:
                 raise ProviderError("OPENROUTER_API_KEY is not set.")
             headers = {
-                "HTTP-Referer": os.getenv("OPENROUTER_SITE_URL", "https://github.com/gabeparra/agent-gate"),
+                "HTTP-Referer": os.getenv(
+                    "OPENROUTER_SITE_URL", "https://github.com/gabeparra/agent-gate"
+                ),
                 "X-Title": os.getenv("OPENROUTER_APP_NAME", "agent-gate"),
             }
             return cls(

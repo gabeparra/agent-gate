@@ -86,7 +86,9 @@ def test_argument_safety_blocks_path_traversal_ssrf_and_secrets() -> None:
     assert any("absolute path" in v for v in abs_path.violations)
 
     ssrf = evaluate_tool_call(
-        ToolCall(tool_name="fetch_url", arguments={"url": "http://169.254.169.254/latest/meta-data"}),
+        ToolCall(
+            tool_name="fetch_url", arguments={"url": "http://169.254.169.254/latest/meta-data"}
+        ),
         specs,
         [],
     )
@@ -99,7 +101,11 @@ def test_argument_safety_blocks_path_traversal_ssrf_and_secrets() -> None:
             arguments={"path": "notes.txt", "content": "token=sk-live-secret12345678"},
         ),
         specs,
-        [ApprovalRecord(tool_name="write_file", approved=True, arguments_match={"path": "notes.txt"})],
+        [
+            ApprovalRecord(
+                tool_name="write_file", approved=True, arguments_match={"path": "notes.txt"}
+            )
+        ],
     )
     assert secret_leak.allowed is False
     assert any("secret/credential leak" in v for v in secret_leak.violations)
@@ -120,14 +126,22 @@ def test_hitl_approval_gate_requires_matching_approval_record() -> None:
     wrong_target = evaluate_tool_call(
         call,
         specs,
-        [ApprovalRecord(tool_name="write_file", approved=True, arguments_match={"path": "other.json"})],
+        [
+            ApprovalRecord(
+                tool_name="write_file", approved=True, arguments_match={"path": "other.json"}
+            )
+        ],
     )
     assert wrong_target.allowed is False
 
     approved = evaluate_tool_call(
         call,
         specs,
-        [ApprovalRecord(tool_name="write_file", approved=True, arguments_match={"path": "config/flags.json"})],
+        [
+            ApprovalRecord(
+                tool_name="write_file", approved=True, arguments_match={"path": "config/flags.json"}
+            )
+        ],
     )
     assert approved.allowed is True
     assert approved.approval_satisfied is True

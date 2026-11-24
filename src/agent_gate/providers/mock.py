@@ -536,7 +536,9 @@ class MockProvider(Provider):
         else:
             score = 1.0 if len(candidate_text.strip()) >= 12 else 0.0
             passed = score >= 0.7
-            reason = "Candidate provided a substantive response." if passed else "Response too short."
+            reason = (
+                "Candidate provided a substantive response." if passed else "Response too short."
+            )
 
         verdict = json.dumps({"score": score, "passed": passed, "reason": reason})
         return ProviderResponse(

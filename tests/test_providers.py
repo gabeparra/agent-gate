@@ -86,7 +86,9 @@ def test_openai_compatible_adapter_parses_text_usage_and_tool_calls() -> None:
     assert resp.tool_calls[0].arguments == {"path": "config/app.yaml"}
 
 
-def test_azure_foundry_preset_uses_api_key_header_and_version(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_azure_foundry_preset_uses_api_key_header_and_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("AZURE_AI_API_KEY", "az-secret")
     monkeypatch.setenv("AZURE_AI_ENDPOINT", "https://example.services.ai.azure.com/models")
     monkeypatch.setenv("AZURE_AI_API_VERSION", "2024-05-01-preview")

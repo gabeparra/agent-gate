@@ -22,7 +22,11 @@ def _case_with_sandbox(approvals: list[ApprovalRecord] | None = None) -> EvalCas
             ToolSpec(
                 name="read_file",
                 mutating=False,
-                input_schema={"type": "object", "required": ["path"], "properties": {"path": {"type": "string"}}},
+                input_schema={
+                    "type": "object",
+                    "required": ["path"],
+                    "properties": {"path": {"type": "string"}},
+                },
             ),
             ToolSpec(
                 name="write_file",

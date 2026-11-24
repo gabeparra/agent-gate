@@ -43,9 +43,7 @@ def load_pricing_table(path: str | Path | None = None) -> dict[str, tuple[float,
     pricing_path = Path(path)
     raw_text = pricing_path.read_text(encoding="utf-8")
     raw = (
-        json.loads(raw_text)
-        if pricing_path.suffix.lower() == ".json"
-        else yaml.safe_load(raw_text)
+        json.loads(raw_text) if pricing_path.suffix.lower() == ".json" else yaml.safe_load(raw_text)
     )
     if not isinstance(raw, dict):
         raise ValueError(f"Pricing file must map model names to input/output rates: {pricing_path}")
@@ -122,9 +120,7 @@ def summarize_cases(cases: list[CaseResult]) -> RunSummary:
     critical_scores = [s for c in cases for s in c.scores if s.critical]
     critical_total = len(critical_scores)
     critical_passed = sum(1 for s in critical_scores if s.passed)
-    critical_pass_rate = (
-        round(critical_passed / critical_total, 4) if critical_total > 0 else 1.0
-    )
+    critical_pass_rate = round(critical_passed / critical_total, 4) if critical_total > 0 else 1.0
 
     total_prompt_tokens = sum(c.usage.prompt_tokens for c in cases)
     total_completion_tokens = sum(c.usage.completion_tokens for c in cases)

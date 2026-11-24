@@ -164,9 +164,15 @@ def render_gate_markdown(verdict: GateVerdict) -> str:
         lines.append("")
 
     if verdict.regressed_cases:
-        lines.append(f"**Regressed cases ({len(verdict.regressed_cases)}):** " + ", ".join(f"`{c}`" for c in verdict.regressed_cases))
+        lines.append(
+            f"**Regressed cases ({len(verdict.regressed_cases)}):** "
+            + ", ".join(f"`{c}`" for c in verdict.regressed_cases)
+        )
     if verdict.improved_cases:
-        lines.append(f"**Improved cases ({len(verdict.improved_cases)}):** " + ", ".join(f"`{c}`" for c in verdict.improved_cases))
+        lines.append(
+            f"**Improved cases ({len(verdict.improved_cases)}):** "
+            + ", ".join(f"`{c}`" for c in verdict.improved_cases)
+        )
 
     return "\n".join(lines).rstrip() + "\n"
 
