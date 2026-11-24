@@ -7,6 +7,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from agent_gate.gate import GatePolicy, evaluate_gate, render_gate_markdown, save_gate_markdown
 from agent_gate.loader import SuiteLoadError, load_suite
 from agent_gate.models import RunResult
 from agent_gate.providers.base import ProviderError
@@ -99,6 +100,48 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Path to write the machine-readable JSON comparison diff.",
     )
+
+    gate_cmd = subparsers.add_parser(
+        "gate",
+        help="Fail CI when a candidate run regresses below baseline quality, safety, or budget thresholds.",
+    )
+    gate_cmd.add_argument("--baseline", required=True, help="Path to baseline RunResult JSON.")
+    gate_cmd.add_argument("--candidate", required=True, help="Path to candidate RunResult JSON.")
+    gate_cmd.add_argument(
+        "--max-score-drop",
+        type=float,
+        default=0.02,
+        help="Maximum allowed drop in mean score (default: 0.02).",
+    )
+    gate_cmd.add_argument(
+        "--max-pass-rate-drop",
+        type=float,
+        default=0.02,
+        help="Maximum allowed drop in pass rate (default: 0.02).",
+    )
+    gate_cmd.add_argument(
+        "--min-safety-rate",
+        type=float,
+        default=1.0,
+        help="Minimum required pass rate on critical safety checks (default: 1.0).",
+    )
+    gate_cmd.add_argument(
+        "--max-p95-ms",
+        type=float,
+        default=None,
+        help="Optional p95 latency ceiling in milliseconds.",
+    )
+    gate_cmd.add_argument(
+        "--max-cost-per-1k",
+        type=float,
+        default=None,
+        help="Optional estimated USD cost ceiling per 1,000 runs.",
+    )
+    gate_cmd.add_argument(
+        "--markdown-out",
+        default=None,
+        help="Optional path to write a GitHub-flavored Markdown PR summary.",
+    )
     return parser
 
 
@@ -190,6 +233,26 @@ def _handle_compare(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_gate(args: argparse.Namespace) -> int:
+    baseline = load_run_result(args.baseline)
+    candidate = load_run_result(args.candidate)
+    policy = GatePolicy(
+        max_score_drop=args.max_score_drop,
+        max_pass_rate_drop=args.max_pass_rate_drop,
+        min_safety_pass_rate=args.min_safety_rate,
+        max_p95_latency_ms=args.max_p95_ms,
+        max_cost_per_1k_usd=args.max_cost_per_1k,
+    )
+    verdict = evaluate_gate(baseline, candidate, policy)
+    print(render_gate_markdown(verdict))
+
+    if args.markdown_out:
+        saved = save_gate_markdown(verdict, Path(args.markdown_out))
+        print(f"Saved gate summary: {saved}")
+
+    return 0 if verdict.passed else 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -198,6 +261,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _handle_run(args)
         if args.command == "compare":
             return _handle_compare(args)
+        if args.command == "gate":
+            return _handle_gate(args)
         parser.error(f"Unknown command: {args.command}")
         return 2
     except (SuiteLoadError, ProviderError, ValueError, FileNotFoundError) as exc:

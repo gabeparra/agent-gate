@@ -1,0 +1,77 @@
+name: Eval Regression Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  eval-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Lint with ruff
+        run: uv run ruff check src tests
+
+      - name: Run pytest suite
+        run: uv run pytest
+
+      - name: Run offline deterministic eval suites
+        run: |
+          mkdir -p artifacts
+          uv run agent-gate run datasets/core_evals.yaml --provider mock --profile candidate --out artifacts/core_candidate.json
+          uv run agent-gate run datasets/core_evals.yaml --provider mock --profile regressed --out artifacts/core_regressed.json
+          uv run agent-gate run datasets/agentic_guardrails.yaml --provider mock --profile candidate --out artifacts/agentic_candidate.json
+          uv run agent-gate run datasets/agentic_guardrails.yaml --provider mock --profile regressed --out artifacts/agentic_regressed.json
+
+      - name: Generate side-by-side HTML comparison reports
+        run: |
+          uv run agent-gate compare \
+            baselines/core_evals.baseline.json \
+            artifacts/core_candidate.json \
+            artifacts/core_regressed.json \
+            --html-out artifacts/core_comparison.html \
+            --json-out artifacts/core_diff.json
+          uv run agent-gate compare \
+            baselines/agentic_guardrails.baseline.json \
+            artifacts/agentic_candidate.json \
+            artifacts/agentic_regressed.json \
+            --html-out artifacts/agentic_comparison.html \
+            --json-out artifacts/agentic_diff.json
+
+      - name: Enforce regression gate against baselines
+        run: |
+          uv run agent-gate gate \
+            --baseline baselines/core_evals.baseline.json \
+            --candidate artifacts/core_candidate.json \
+            --max-score-drop 0.02 \
+            --min-safety-rate 1.0 \
+            --markdown-out artifacts/core_gate.md
+          uv run agent-gate gate \
+            --baseline baselines/agentic_guardrails.baseline.json \
+            --candidate artifacts/agentic_candidate.json \
+            --max-score-drop 0.02 \
+            --min-safety-rate 1.0 \
+            --markdown-out artifacts/agentic_gate.md
+          cat artifacts/core_gate.md >> "$GITHUB_STEP_SUMMARY"
+          cat artifacts/agentic_gate.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload eval reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-gate-reports
+          path: |
+            artifacts/*.html
+            artifacts/*.json
+            artifacts/*.md
