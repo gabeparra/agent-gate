@@ -2,6 +2,8 @@
 
 **Deterministic evaluation, MCP tool guardrails, and CI regression harness for LLM agents.**
 
+**Status:** `Maintained` - reference Python CLI/library for deterministic LLM agent evaluation and CI regression gating.
+
 `agent-gate` is a lightweight Python CLI and library for testing production agents before shipping prompt, model, or tool changes. Instead of relying on spot checks or subjective grading alone, it pairs deterministic checks, sandboxed MCP tool verification, cost/latency accounting, side-by-side HTML comparison reports, and a strict GitHub Actions regression gate.
 
 ---
@@ -52,7 +54,7 @@ Most agent failures in production are not subtle style issues. They are concrete
 
 ---
 
-## 60-Second Offline Quickstart
+## Quickstart (60-Second Offline)
 
 No API keys are required. The built-in `mock` provider ships with deterministic `baseline`, `candidate`, and `regressed` profiles so you can run the full pipeline locally right away.
 
